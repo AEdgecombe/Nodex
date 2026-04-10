@@ -1,13 +1,20 @@
 {
-  "name": "server",
+  "name": "solana-config-advisor-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend API for the Solana Infrastructure Optimiser",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "solana",
+    "rpc",
+    "validator",
+    "diagnostics"
+  ],
+  "author": "UP2124153",
   "license": "ISC",
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
@@ -15,5 +22,8 @@
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "mongoose": "^9.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
