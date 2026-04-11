@@ -1,27 +1,20 @@
 {
-  "name": "solana-config-advisor-api",
+  "name": "solana-ops-suite-api",
   "version": "1.0.0",
-  "description": "Backend API for the Solana Infrastructure Optimiser",
+  "description": "Backend API for the Solana Validator Ops Suite",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "solana",
-    "rpc",
-    "validator",
-    "diagnostics"
-  ],
   "author": "UP2124153",
   "license": "ISC",
   "dependencies": {
-    "@solana/web3.js": "^1.98.4",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
-    "mongoose": "^9.4.1"
+    "express-rate-limit": "^7.5.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
