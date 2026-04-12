@@ -28,7 +28,7 @@ const STYLE = {
 };
 
 const RPCDoctor = () => {
-  const [rpcUrl, setRpcUrl] = useState('https://api.mainnet-beta.solana.com');
+  const [rpcUrl, setRpcUrl] = useState('https://api.testnet.solana.com');
   const [currentResult, setCurrentResult] = useState(null);
   const [mainnetResult, setMainnetResult] = useState(null);
   const [latencyHistory, setLatencyHistory] = useState([]);
@@ -58,8 +58,8 @@ const RPCDoctor = () => {
     setError(null);
     try {
       const [customRes, mainnetRes] = await Promise.all([
-        fetch('http://localhost:5000/api/rpc-doctor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: rpcUrlRef.current }) }),
-        fetch('http://localhost:5000/api/rpc-doctor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: 'https://api.mainnet-beta.solana.com' }) })
+        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: rpcUrlRef.current }) }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: 'https://api.mainnet-beta.solana.com' }) })
       ]);
       const customData = await customRes.json(); 
       const mainnetData = await mainnetRes.json();
@@ -90,7 +90,7 @@ const RPCDoctor = () => {
     setAuditError(null);
     try {
       const host = new URL(rpcUrlRef.current).hostname;
-      const res = await fetch('http://localhost:5000/api/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetIp: host }) });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/audit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetIp: host }) });
       const data = await res.json();
       if (res.status === 429) throw new Error(data.error);
       if (!res.ok) throw new Error(data.error);
@@ -180,7 +180,7 @@ const RPCDoctor = () => {
                 </h3>
                 <p className="text-[10px] text-slate-500 dark:text-white/30 tracking-[0.2em] uppercase mt-2">DDoS Vector Penetration Test</p>
               </div>
-              <button onClick={runSecurityAudit} disabled={isAuditing || auditCooldown > 0} className={`px-8 py-3 rounded-full text-[9px] uppercase tracking-[0.2em] font-light transition-all border ${auditCooldown > 0 ? STYLE.auditWait : STYLE.auditReady}`}>
+              <button onClick={runSecurityAudit} disabled={isAuditing || auditCooldown > 0} className={`px-8 py-3 rounded-full text-[9px] uppercase tracking-[0.2em] font-light transition-all border ${auditCooldown > 0 ? STYLE.auditBtnWait : STYLE.auditBtnReady}`}>
                 {isAuditing ? 'Scanning...' : auditCooldown > 0 ? `Cooldown ${auditCooldown}s` : 'Execute Scan'}
               </button>
             </div>
