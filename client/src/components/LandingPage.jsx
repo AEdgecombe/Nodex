@@ -6,7 +6,7 @@ const STYLE = {
   badgeWrapper: "px-4 py-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02] backdrop-blur-md mb-8 inline-flex items-center gap-3",
   badgeDot: "w-1.5 h-1.5 rounded-full bg-violet-500 dark:bg-violet-400 shadow-[0_0_10px_rgba(139,92,246,0.4)] dark:shadow-[0_0_10px_rgba(139,92,246,0.8)] animate-pulse",
   badgeText: "text-[10px] uppercase tracking-[0.3em] text-slate-600 dark:text-white/60 font-light",
-  heading: "text-5xl md:text-7xl lg:text-8xl font-extralight tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-slate-900 to-slate-500 dark:from-white dark:to-white/40 mb-6 drop-shadow-sm dark:drop-shadow-2xl transition-all duration-700",
+  heading: "text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-extralight tracking-tighter leading-tight text-transparent bg-clip-text bg-gradient-to-b from-slate-900 to-slate-500 dark:from-white dark:to-white/40 mb-6 drop-shadow-sm dark:drop-shadow-2xl transition-all duration-700 flex flex-col gap-1 md:gap-2",
   headingAccent: "font-light italic pr-4 bg-clip-text bg-gradient-to-r from-cyan-600 to-violet-600 dark:from-cyan-400 dark:to-violet-400 text-transparent",
   paragraph: "max-w-2xl text-sm md:text-base font-light tracking-wide text-slate-500 dark:text-white/40 leading-relaxed mb-16 transition-colors duration-700",
   cardGrid: "flex flex-col sm:flex-row gap-6 w-full max-w-xl mx-auto",
@@ -32,8 +32,8 @@ const LandingPage = ({ scrollTo }) => {
       </div>
 
       <h1 className={STYLE.heading}>
-        Nodex<br className="hidden md:block"/>
-        <span className={STYLE.headingAccent}>Architecture Refined.</span>
+        <span>Nodex Architecture</span>
+        <span className={STYLE.headingAccent}>Refined.</span>
       </h1>
 
       <p className={STYLE.paragraph}>
