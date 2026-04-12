@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⬡ Solana Operations Suite
+# ⬡ Nodex
 
 **High Fidelity Validator Diagnostics & Telemetry**
 

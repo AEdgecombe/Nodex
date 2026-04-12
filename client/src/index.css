@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
-html {
+/* 1. This tells Tailwind v4 to listen to our React Dark Mode Toggle button */
+@custom-variant dark (&:is(.dark *));
+
+/* 2. This resets the layout so the app fills the entire screen (fixes the black bar) */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
   scroll-behavior: smooth;
-  background-color: #020617; /* Solana-dark background */
+  background-color: transparent; 
 }
