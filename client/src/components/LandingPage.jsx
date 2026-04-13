@@ -32,9 +32,9 @@ const LandingPage = ({ scrollTo }) => {
       </div>
 
       <h1 className={STYLE.heading}>
-        <span>Nodex Architecture</span>
-        <span className={STYLE.headingAccent}>Refined.</span>
-      </h1>
+        <span>Nodex</span>
+        <span className={STYLE.headingAccent}>Architecture Refined.</span>
+      </h1>\
 
       <p className={STYLE.paragraph}>
         A high-fidelity diagnostic suite engineered for node operators. Validate bare-metal hardware procurement, execute DDoS vector audits, and monitor real-time JSON-RPC telemetry.
