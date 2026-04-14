@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const net = require('net');
 const rateLimit = require('express-rate-limit');
-const mongoose = require('mongoose'); // <-- 1. Added Mongoose
+const mongoose = require('mongoose'); 
 require('dotenv').config();
 
 const app = express();
@@ -115,4 +115,10 @@ app.post('/api/audit', auditLimiter, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Only start the server if we are NOT running tests
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+}
+
+// Export the app so Supertest can use it
+module.exports = app;
