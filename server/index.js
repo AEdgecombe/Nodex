@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const net = require('net');
 const rateLimit = require('express-rate-limit');
-const mongoose = require('mongoose'); // <-- 1. Added Mongoose
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
@@ -11,21 +11,16 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// ==========================================
-// 🗄️ DATABASE CONNECTION
-// ==========================================
-// This looks at your .env file and connects to Atlas securely
+// Database initialisation
 if (process.env.MONGO_URI) {
   mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ Connected to MongoDB Atlas Database'))
-    .catch((err) => console.error('❌ Database connection error:', err));
+    .then(() => console.log('Connected to MongoDB Atlas Database'))
+    .catch((err) => console.error('Database connection error:', err));
 } else {
-  console.warn('⚠️ WARNING: No MONGO_URI found in .env file');
+  console.warn('Warning: No MONGO_URI found in environment variables');
 }
 
-// ==========================================
-// 🛡️ SECURITY & THROTTLING
-// ==========================================
+// Rate limiting configurations
 const rpcLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30, 
@@ -42,24 +37,33 @@ const auditLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ==========================================
-// 🚦 API ROUTES
-// ==========================================
+// Helper function to keep the RPC fetch logic DRY
+const buildRpcPayload = (id, method) => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ jsonrpc: '2.0', id, method })
+});
+
+// Application Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'success', message: 'API Online' });
 });
 
 app.post('/api/rpc-doctor', rpcLimiter, async (req, res) => {
   const { rpcUrl } = req.body;
-  if (!rpcUrl) return res.status(400).json({ error: 'RPC URL is required' });
+  
+  if (!rpcUrl) {
+    return res.status(400).json({ error: 'RPC URL is required' });
+  }
 
   const startTime = Date.now();
+
   try {
     const [slotRes, healthRes, versionRes, epochRes] = await Promise.all([
-      fetch(rpcUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSlot' }) }),
-      fetch(rpcUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getHealth' }) }),
-      fetch(rpcUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'getVersion' }) }),
-      fetch(rpcUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'getEpochInfo' }) })
+      fetch(rpcUrl, buildRpcPayload(1, 'getSlot')),
+      fetch(rpcUrl, buildRpcPayload(2, 'getHealth')),
+      fetch(rpcUrl, buildRpcPayload(3, 'getVersion')),
+      fetch(rpcUrl, buildRpcPayload(4, 'getEpochInfo'))
     ]);
 
     const slotData = await slotRes.json();
@@ -77,13 +81,21 @@ app.post('/api/rpc-doctor', rpcLimiter, async (req, res) => {
       message: 'Diagnostics completed.'
     });
   } catch (error) {
-    res.status(500).json({ status: 'Offline', slot: null, latency: Date.now() - startTime, error: 'Failed to connect to endpoint.' });
+    res.status(500).json({ 
+      status: 'Offline', 
+      slot: null, 
+      latency: Date.now() - startTime, 
+      error: 'Failed to connect to endpoint.' 
+    });
   }
 });
 
 app.post('/api/audit', auditLimiter, async (req, res) => {
   const { targetIp } = req.body;
-  if (!targetIp) return res.status(400).json({ error: 'Target Host is required' });
+  
+  if (!targetIp) {
+    return res.status(400).json({ error: 'Target Host is required' });
+  }
 
   const portsToCheck = [
     { port: 8899, name: 'RPC Port', shouldBeOpen: false }, 
@@ -95,24 +107,51 @@ app.post('/api/audit', auditLimiter, async (req, res) => {
     return new Promise((resolve) => {
       const socket = new net.Socket();
       socket.setTimeout(1500);
-      socket.on('connect', () => { socket.destroy(); resolve({ port, status: 'OPEN', vulnerable: true }); });
-      socket.on('timeout', () => { socket.destroy(); resolve({ port, status: 'FILTERED', vulnerable: false }); });
-      socket.on('error', () => { resolve({ port, status: 'CLOSED', vulnerable: false }); });
+      
+      socket.on('connect', () => { 
+        socket.destroy(); 
+        resolve({ port, status: 'OPEN', vulnerable: true }); 
+      });
+      
+      socket.on('timeout', () => { 
+        socket.destroy(); 
+        resolve({ port, status: 'FILTERED', vulnerable: false }); 
+      });
+      
+      socket.on('error', () => { 
+        resolve({ port, status: 'CLOSED', vulnerable: false }); 
+      });
+      
       socket.connect(port, host);
     });
   };
 
   try {
-    const results = await Promise.all(portsToCheck.map(async (p) => {
-      const scanResult = await checkPort(p.port, targetIp);
-      return { ...p, ...scanResult };
-    }));
+    const results = await Promise.all(
+      portsToCheck.map(async (p) => {
+        const scanResult = await checkPort(p.port, targetIp);
+        return { ...p, ...scanResult };
+      })
+    );
+    
     const vulnerabilities = results.filter(r => r.vulnerable && !r.shouldBeOpen).length;
-    let score = 100 - (vulnerabilities * 40);
-    res.json({ target: targetIp, score: Math.max(0, score), ports: results, timestamp: new Date().toISOString() });
+    const score = Math.max(0, 100 - (vulnerabilities * 40));
+    
+    res.json({ 
+      target: targetIp, 
+      score: score, 
+      ports: results, 
+      timestamp: new Date().toISOString() 
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to complete security audit.' });
   }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Only start the server if we are NOT running tests
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// Export the app so Supertest can use it
+module.exports = app;

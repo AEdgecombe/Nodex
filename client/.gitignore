@@ -7,12 +7,29 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+
+# Build Outputs
+dist/
+dist-ssr/
+build/
+
+# Environment Variables (Security Critical)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.local
 
-# Editor directories and files
+# Testing (Jest & Vitest Coverage Reports)
+coverage/
+
+# Cloud Hosting Caches
+.vercel/
+
+# Editor Directories and OS Files
 .vscode/*
 !.vscode/extensions.json
 .idea

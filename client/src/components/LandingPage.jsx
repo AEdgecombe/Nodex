@@ -11,15 +11,41 @@ const STYLE = {
   paragraph: "max-w-2xl text-sm md:text-base font-light tracking-wide text-slate-500 dark:text-white/40 leading-relaxed mb-16 transition-colors duration-700",
   cardGrid: "flex flex-col sm:flex-row gap-6 w-full max-w-xl mx-auto",
   btnBase: "flex-1 group relative p-px rounded-2xl transition-all duration-700",
-  btnGradientProcurement: "bg-gradient-to-b from-slate-200 to-slate-100 dark:from-white/20 dark:to-white/5 hover:from-violet-400/50 hover:to-cyan-400/50 dark:hover:from-violet-500/50 dark:hover:to-cyan-500/50",
-  btnGradientTelemetry: "bg-gradient-to-b from-slate-200 to-slate-100 dark:from-white/20 dark:to-white/5 hover:from-cyan-400/50 hover:to-violet-400/50 dark:hover:from-cyan-500/50 dark:hover:to-violet-500/50",
-  btnGlowProcurement: "absolute inset-0 bg-violet-400/10 dark:bg-violet-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
-  btnGlowTelemetry: "absolute inset-0 bg-cyan-400/10 dark:bg-cyan-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
   btnInner: "relative h-full bg-white dark:bg-[#050505] rounded-[15px] p-8 flex flex-col items-center justify-center gap-4 transition-all duration-500 group-hover:bg-slate-50 dark:group-hover:bg-[#080808]",
-  btnIconProcurement: "text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform duration-500",
-  btnIconTelemetry: "text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-500",
   btnTitle: "font-light tracking-widest uppercase text-xs text-slate-900 dark:text-white",
   btnSubtitle: "text-[10px] text-slate-500 dark:text-white/40 tracking-wider mt-2"
+};
+
+// Configuration dictionary isolating the theme differences between cards
+const CARD_VARIANTS = {
+  procurement: {
+    gradient: "bg-gradient-to-b from-slate-200 to-slate-100 dark:from-white/20 dark:to-white/5 hover:from-violet-400/50 hover:to-cyan-400/50 dark:hover:from-violet-500/50 dark:hover:to-cyan-500/50",
+    glow: "absolute inset-0 bg-violet-400/10 dark:bg-violet-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
+    iconTheme: "text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform duration-500"
+  },
+  telemetry: {
+    gradient: "bg-gradient-to-b from-slate-200 to-slate-100 dark:from-white/20 dark:to-white/5 hover:from-cyan-400/50 hover:to-violet-400/50 dark:hover:from-cyan-500/50 dark:hover:to-violet-500/50",
+    glow: "absolute inset-0 bg-cyan-400/10 dark:bg-cyan-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
+    iconTheme: "text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-500"
+  }
+};
+
+// Reusable component ensuring the layout only has to be coded once
+const NavigationCard = ({ title, subtitle, icon: Icon, variantKey, onClick }) => {
+  const variant = CARD_VARIANTS[variantKey];
+
+  return (
+    <button onClick={onClick} className={`${STYLE.btnBase} ${variant.gradient}`}>
+      <div className={variant.glow}></div>
+      <div className={STYLE.btnInner}>
+        <Icon className={variant.iconTheme} size={32} strokeWidth={1} />
+        <div>
+          <h3 className={STYLE.btnTitle}>{title}</h3>
+          <p className={STYLE.btnSubtitle}>{subtitle}</p>
+        </div>
+      </div>
+    </button>
+  );
 };
 
 const LandingPage = ({ scrollTo }) => {
@@ -37,31 +63,24 @@ const LandingPage = ({ scrollTo }) => {
       </h1>
 
       <p className={STYLE.paragraph}>
-        A high-fidelity diagnostic suite engineered for node operators. Validate bare-metal hardware procurement, execute DDoS vector audits, and monitor real-time JSON-RPC telemetry.
+        A high fidelity diagnostic suite engineered for node operators. Validate bare metal hardware procurement, execute DDoS vector audits, and monitor real time JSON RPC telemetry.
       </p>
 
       <div className={STYLE.cardGrid}>
-        <button onClick={() => scrollTo('advisor')} className={`${STYLE.btnBase} ${STYLE.btnGradientProcurement}`}>
-          <div className={STYLE.btnGlowProcurement}></div>
-          <div className={STYLE.btnInner}>
-            <Server className={STYLE.btnIconProcurement} size={32} strokeWidth={1} />
-            <div>
-              <h3 className={STYLE.btnTitle}>Procurement</h3>
-              <p className={STYLE.btnSubtitle}>Hardware Validation</p>
-            </div>
-          </div>
-        </button>
-
-        <button onClick={() => scrollTo('doctor')} className={`${STYLE.btnBase} ${STYLE.btnGradientTelemetry}`}>
-          <div className={STYLE.btnGlowTelemetry}></div>
-          <div className={STYLE.btnInner}>
-            <Activity className={STYLE.btnIconTelemetry} size={32} strokeWidth={1} />
-            <div>
-              <h3 className={STYLE.btnTitle}>Telemetry</h3>
-              <p className={STYLE.btnSubtitle}>Network Diagnostics</p>
-            </div>
-          </div>
-        </button>
+        <NavigationCard 
+          title="Procurement" 
+          subtitle="Hardware Validation" 
+          icon={Server} 
+          variantKey="procurement" 
+          onClick={() => scrollTo('advisor')} 
+        />
+        <NavigationCard 
+          title="Telemetry" 
+          subtitle="Network Diagnostics" 
+          icon={Activity} 
+          variantKey="telemetry" 
+          onClick={() => scrollTo('doctor')} 
+        />
       </div>
 
     </div>
