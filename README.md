@@ -4,12 +4,20 @@
 
 **High Fidelity Validator Diagnostics & Telemetry**
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Access_Platform-06B6D4?style=for-the-badge)](https://solana-config-advisor.vercel.app/)
+
 ![Solana](https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 
 > An automated diagnostic suite designed to bridge the gap between protocol theory and high performance validator management. Built specifically for the 400ms block production era of the Solana Agave client.
+
+<br>
+
+<a href="https://solana-config-advisor.vercel.app/">
+  <img src="./assets/landing-preview.png" alt="Nodex Platform Preview" width="850">
+</a>
 
 </div>
 
@@ -53,14 +61,13 @@ To satisfy strict non functional security requirements and protect public infras
 | **Frontend** | React, Tailwind v4, Recharts | Responsive SPA with complex state management and SVG data visualisation. |
 | **Backend** | Node.js, Express, Net | API routing, concurrent request handling, and TCP socket generation. |
 | **Security** | express-rate-limit | Strict request throttling to protect public Solana nodes. |
+| **Testing** | Vitest, Jest, Supertest | Automated client DOM verification and backend route validation. |
 
 <br>
 
-## 🛠️ Local Deployment
+## ☁️ Cloud Deployment Architecture
 
-Ensure you have Node.js v20 or higher installed. The project requires both the Express backend and Vite frontend to run simultaneously.
+To ensure high availability and absolute separation of concerns, the platform abandons monolithic hosting in favour of a decoupled serverless architecture. 
 
-**1. Clone the repository**
-```bash
-git clone [https://github.com/AEdgecombe/solana-ops-suite.git](https://github.com/AEdgecombe/solana-ops-suite.git)
-cd solana-ops-suite
+* **Frontend Delivery:** The React application is compiled into highly optimised static assets and distributed globally via the Vercel Content Delivery Network, ensuring instant client side routing regardless of user geography.
+* **Backend Processing:** The Node.js API gateway operates as an isolated web service on Render. This backend handles all complex TCP socket generation and MongoDB database interactions securely behind restrictive CORS policies, keeping sensitive logic entirely hidden from the public client.
