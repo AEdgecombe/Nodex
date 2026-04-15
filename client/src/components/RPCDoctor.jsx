@@ -17,7 +17,7 @@ const STYLE = {
   metricGrid: "grid grid-cols-2 md:grid-cols-4 gap-4",
   metricCard: "p-6 bg-white/40 dark:bg-white/[0.01] rounded-2xl border border-slate-200 dark:border-white/[0.05] backdrop-blur-md",
   metricLabel: "text-[9px] text-slate-500 dark:text-white/30 uppercase tracking-[0.3em] mb-2",
-  chartBox: "bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] h-80 relative overflow-hidden mt-8",
+  chartBox: "w-full min-w-0 bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] h-80 relative overflow-hidden mt-8", // Included Mobile Fix
   auditBox: "bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] mt-8",
   auditBtnReady: "bg-violet-100 hover:bg-violet-200 text-violet-700 border-violet-300 shadow-sm dark:bg-violet-500/10 dark:hover:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30 dark:hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]",
   auditBtnWait: "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-white/5 dark:text-white/30 dark:border-white/5",
@@ -27,13 +27,39 @@ const STYLE = {
   portClosed: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
 };
 
+// Abstracted components for cleaner rendering
+const TelemetryMetric = ({ label, value, colorClass }) => (
+  <div className={STYLE.metricCard}>
+    <p className={STYLE.metricLabel}>{label}</p>
+    <p className={`text-2xl font-extralight tracking-wide ${colorClass}`}>{value}</p>
+  </div>
+);
+
+const PortCard = ({ port }) => (
+  <div className={STYLE.portCard}>
+    <div className="flex justify-between items-center mb-2">
+      <h4 className="font-light tracking-widest text-slate-800 dark:text-white/80 text-sm">
+        Port {port.port}
+      </h4>
+      <span className={`px-3 py-1 text-[8px] uppercase tracking-[0.2em] rounded-full border ${port.status === 'OPEN' ? STYLE.portOpen : STYLE.portClosed}`}>
+        {port.status}
+      </span>
+    </div>
+    <p className="text-[10px] text-slate-500 dark:text-white/30 tracking-widest uppercase font-light">
+      {port.name}
+    </p>
+  </div>
+);
+
 const RPCDoctor = () => {
   const [rpcUrl, setRpcUrl] = useState('https://api.testnet.solana.com');
   const [currentResult, setCurrentResult] = useState(null);
   const [mainnetResult, setMainnetResult] = useState(null);
   const [latencyHistory, setLatencyHistory] = useState([]);
   const [error, setError] = useState(null);
+  
   const [isMonitoring, setIsMonitoring] = useState(false);
+  
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditData, setAuditData] = useState(null);
   const [auditError, setAuditError] = useState(null);
@@ -41,10 +67,12 @@ const RPCDoctor = () => {
 
   const rpcUrlRef = useRef(rpcUrl);
   
+  // Keep ref synchronised with state for interval closures
   useEffect(() => { 
     rpcUrlRef.current = rpcUrl; 
   }, [rpcUrl]);
 
+  // Reset state when target URL changes
   useEffect(() => { 
     setLatencyHistory([]); 
     setCurrentResult(null); 
@@ -52,23 +80,45 @@ const RPCDoctor = () => {
     setError(null); 
     setAuditData(null); 
     setAuditError(null); 
+    setIsMonitoring(false);
   }, [rpcUrl]);
 
   const runDiagnostics = async () => {
     setError(null);
     try {
       const [customRes, mainnetRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: rpcUrlRef.current }) }),
-        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rpcUrl: 'https://api.mainnet-beta.solana.com' }) })
+        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ rpcUrl: rpcUrlRef.current }) 
+        }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/rpc-doctor`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ rpcUrl: 'https://api.mainnet-beta.solana.com' }) 
+        })
       ]);
+
       const customData = await customRes.json(); 
       const mainnetData = await mainnetRes.json();
+
       if (customRes.status === 429) throw new Error('Rate limit exceeded. Wait 60s.');
-      if (!customRes.ok) throw new Error(customData.error);
-      if (!mainnetRes.ok) throw new Error(mainnetData.error);
+      if (!customRes.ok) throw new Error(customData.error || 'Failed to fetch custom node data');
+      if (!mainnetRes.ok) throw new Error(mainnetData.error || 'Failed to fetch mainnet control data');
+
       setCurrentResult(customData); 
       setMainnetResult(mainnetData);
-      setLatencyHistory(prev => [...prev, { time: customData.timestamp, customPing: customData.latency, mainnetPing: mainnetData.latency }].slice(-15));
+
+      setLatencyHistory((prev) => {
+        const newEntry = { 
+          time: customData.timestamp, 
+          customPing: customData.latency, 
+          mainnetPing: mainnetData.latency 
+        };
+        // Slice ensures we only keep the last 15 entries for performance
+        return [...prev, newEntry].slice(-15);
+      });
+
     } catch (err) { 
       setError(err.message); 
       setIsMonitoring(false); 
@@ -86,24 +136,38 @@ const RPCDoctor = () => {
 
   const runSecurityAudit = async () => {
     if (auditCooldown > 0) return;
+    
     setIsAuditing(true); 
     setAuditError(null);
+
     try {
       const host = new URL(rpcUrlRef.current).hostname;
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/audit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetIp: host }) });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/audit`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ targetIp: host }) 
+      });
+      
       const data = await res.json();
+      
       if (res.status === 429) throw new Error(data.error);
       if (!res.ok) throw new Error(data.error);
+      
       setAuditData(data); 
       setAuditCooldown(20);
+      
       const timer = setInterval(() => { 
-        setAuditCooldown(p => { 
-          if (p <= 1) { clearInterval(timer); return 0; } 
-          return p - 1; 
+        setAuditCooldown((prev) => { 
+          if (prev <= 1) { 
+            clearInterval(timer); 
+            return 0; 
+          } 
+          return prev - 1; 
         }); 
       }, 1000);
+
     } catch (err) { 
-      setAuditError(err.message); 
+      setAuditError(err.message || 'Audit failed. Check network connection.'); 
     } finally { 
       setIsAuditing(false); 
     }
@@ -111,32 +175,67 @@ const RPCDoctor = () => {
 
   const exportCSV = () => {
     if (!latencyHistory.length) return;
+
+    const headers = 'Time,Custom_ms,Mainnet_ms\n';
+    const rows = latencyHistory.map(r => `${r.time},${r.customPing},${r.mainnetPing}`).join('\n');
+    const csvContent = headers + rows;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([['Time,Custom_ms,Mainnet_ms', ...latencyHistory.map(r => `${r.time},${r.customPing},${r.mainnetPing}`)].join('\n')], { type: 'text/csv' }));
+    link.href = url;
     link.download = `telemetry_${Date.now()}.csv`; 
+    
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className={STYLE.wrapper}>
       <div className={STYLE.header}>
         <div className="flex gap-4 items-center">
-          <div className={STYLE.iconBox}><Activity className="text-cyan-600 dark:text-cyan-400" size={24} strokeWidth={1} /></div>
+          <div className={STYLE.iconBox}>
+            <Activity className="text-cyan-600 dark:text-cyan-400" size={24} strokeWidth={1} />
+          </div>
           <div>
             <h2 className={STYLE.title}>Network Telemetry</h2>
             <p className={STYLE.subtitle}>Real time latency & vector auditing</p>
           </div>
         </div>
-        {latencyHistory.length > 0 && <button onClick={exportCSV} className={STYLE.btnExport}><Download size={12}/> Export</button>}
+        {latencyHistory.length > 0 && (
+          <button onClick={exportCSV} className={STYLE.btnExport}>
+            <Download size={12}/> Export
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-12">
         <div className="flex-1 relative group">
-          <Server className="absolute left-5 top-4 text-slate-400 dark:text-white/20 group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-400 transition-colors" size={18} strokeWidth={1.5} />
-          <input type="url" value={rpcUrl} onChange={e => setRpcUrl(e.target.value)} disabled={isMonitoring} className={STYLE.inputBox} />
+          <Server 
+            className="absolute left-5 top-4 text-slate-400 dark:text-white/20 group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-400 transition-colors" 
+            size={18} 
+            strokeWidth={1.5} 
+          />
+          <input 
+            type="url" 
+            value={rpcUrl} 
+            onChange={(e) => setRpcUrl(e.target.value)} 
+            disabled={isMonitoring} 
+            className={STYLE.inputBox} 
+          />
         </div>
-        <button onClick={() => setIsMonitoring(!isMonitoring)} className={`${STYLE.btnBase} ${isMonitoring ? STYLE.btnActive : STYLE.btnIdle}`}>
-          {isMonitoring ? <><StopCircle size={14}/> Halting</> : <><PlayCircle size={14}/> Initialize</>}
+        <button 
+          onClick={() => setIsMonitoring(!isMonitoring)} 
+          className={`${STYLE.btnBase} ${isMonitoring ? STYLE.btnActive : STYLE.btnIdle}`}
+        >
+          {isMonitoring ? (
+            <><StopCircle size={14}/> Halting</>
+          ) : (
+            <><PlayCircle size={14}/> Initialise</>
+          )}
         </button>
       </div>
 
@@ -144,30 +243,89 @@ const RPCDoctor = () => {
 
       {currentResult && (
         <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4">
+          
           <div className={STYLE.metricGrid}>
-            {[
-              { l: 'Status', v: currentResult.status, c: currentResult.status === 'Healthy' ? 'text-cyan-700 dark:text-cyan-400' : 'text-violet-700 dark:text-violet-400' }, 
-              { l: 'Epoch', v: currentResult.epoch, c: 'text-slate-900 dark:text-white' }, 
-              { l: 'Version', v: currentResult.version, c: 'text-slate-600 dark:text-white/60 text-lg' }, 
-              { l: 'Slot', v: currentResult.slot, c: 'text-slate-900 dark:text-white' }
-            ].map((s, i) => (
-              <div key={i} className={STYLE.metricCard}>
-                <p className={STYLE.metricLabel}>{s.l}</p>
-                <p className={`text-2xl font-extralight tracking-wide ${s.c}`}>{s.v}</p>
-              </div>
-            ))}
+            <TelemetryMetric 
+              label="Status" 
+              value={currentResult.status} 
+              colorClass={currentResult.status === 'Healthy' ? 'text-cyan-700 dark:text-cyan-400' : 'text-violet-700 dark:text-violet-400'} 
+            />
+            <TelemetryMetric 
+              label="Epoch" 
+              value={currentResult.epoch} 
+              colorClass="text-slate-900 dark:text-white" 
+            />
+            <TelemetryMetric 
+              label="Version" 
+              value={currentResult.version} 
+              colorClass="text-slate-600 dark:text-white/60 text-lg" 
+            />
+            <TelemetryMetric 
+              label="Slot" 
+              value={currentResult.slot} 
+              colorClass="text-slate-900 dark:text-white" 
+            />
           </div>
 
           <div className={STYLE.chartBox}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height="100%">
               <LineChart data={latencyHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="opacity-10 dark:opacity-5" vertical={false} />
-                <XAxis dataKey="time" stroke="currentColor" className="opacity-40 dark:opacity-20 text-slate-700 dark:text-white" fontSize={10} tickMargin={10} axisLine={false} tickLine={false} />
-                <YAxis stroke="currentColor" className="opacity-40 dark:opacity-20 text-slate-700 dark:text-white" fontSize={10} unit="ms" axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(5,5,5,0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }} itemStyle={{ color: '#fff', fontWeight: 300, fontSize: '12px' }} />
-                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 300, textTransform: 'uppercase', letterSpacing: '0.2em' }} className="text-slate-500 dark:text-white/40"/>
-                <Line name="Custom Node" type="monotone" dataKey="customPing" stroke="#0891b2" strokeWidth={1.5} dot={{ fill: '#0891b2', r: 2 }} activeDot={{ r: 5, fill: '#fff', strokeWidth: 1.5 }} />
-                <Line name="Mainnet Base" type="monotone" dataKey="mainnetPing" stroke="#7c3aed" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke="currentColor" 
+                  className="opacity-10 dark:opacity-5" 
+                  vertical={false} 
+                />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="currentColor" 
+                  className="opacity-40 dark:opacity-20 text-slate-700 dark:text-white" 
+                  fontSize={10} 
+                  tickMargin={10} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <YAxis 
+                  stroke="currentColor" 
+                  className="opacity-40 dark:opacity-20 text-slate-700 dark:text-white" 
+                  fontSize={10} 
+                  unit="ms" 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(5,5,5,0.9)', 
+                    backdropFilter: 'blur(12px)', 
+                    border: '1px solid rgba(255,255,255,0.05)', 
+                    borderRadius: '12px' 
+                  }} 
+                  itemStyle={{ color: '#fff', fontWeight: 300, fontSize: '12px' }} 
+                />
+                <Legend 
+                  verticalAlign="top" 
+                  height={36} 
+                  wrapperStyle={{ fontSize: '10px', fontWeight: 300, textTransform: 'uppercase', letterSpacing: '0.2em' }} 
+                  className="text-slate-500 dark:text-white/40"
+                />
+                <Line 
+                  name="Custom Node" 
+                  type="monotone" 
+                  dataKey="customPing" 
+                  stroke="#0891b2" 
+                  strokeWidth={1.5} 
+                  dot={{ fill: '#0891b2', r: 2 }} 
+                  activeDot={{ r: 5, fill: '#fff', strokeWidth: 1.5 }} 
+                />
+                <Line 
+                  name="Mainnet Base" 
+                  type="monotone" 
+                  dataKey="mainnetPing" 
+                  stroke="#7c3aed" 
+                  strokeWidth={1.5} 
+                  strokeDasharray="4 4" 
+                  dot={false} 
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -176,11 +334,18 @@ const RPCDoctor = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
               <div>
                 <h3 className="text-lg font-extralight tracking-wide text-slate-900 dark:text-white flex items-center gap-3">
-                  <Shield size={18} className="text-violet-600 dark:text-violet-400" strokeWidth={1.5}/> Port Vulnerability Audit
+                  <Shield size={18} className="text-violet-600 dark:text-violet-400" strokeWidth={1.5}/> 
+                  Port Vulnerability Audit
                 </h3>
-                <p className="text-[10px] text-slate-500 dark:text-white/30 tracking-[0.2em] uppercase mt-2">DDoS Vector Penetration Test</p>
+                <p className="text-[10px] text-slate-500 dark:text-white/30 tracking-[0.2em] uppercase mt-2">
+                  DDoS Vector Penetration Test
+                </p>
               </div>
-              <button onClick={runSecurityAudit} disabled={isAuditing || auditCooldown > 0} className={`px-8 py-3 rounded-full text-[9px] uppercase tracking-[0.2em] font-light transition-all border ${auditCooldown > 0 ? STYLE.auditBtnWait : STYLE.auditBtnReady}`}>
+              <button 
+                onClick={runSecurityAudit} 
+                disabled={isAuditing || auditCooldown > 0} 
+                className={`px-8 py-3 rounded-full text-[9px] uppercase tracking-[0.2em] font-light transition-all border ${auditCooldown > 0 ? STYLE.auditBtnWait : STYLE.auditBtnReady}`}
+              >
                 {isAuditing ? 'Scanning...' : auditCooldown > 0 ? `Cooldown ${auditCooldown}s` : 'Execute Scan'}
               </button>
             </div>
@@ -191,25 +356,24 @@ const RPCDoctor = () => {
               <div className="animate-in fade-in duration-700 slide-in-from-bottom-4">
                 <div className={STYLE.scoreBox}>
                   <div className="flex items-center gap-4">
-                    {auditData.score === 100 ? <ShieldCheck size={28} className="text-cyan-600 dark:text-cyan-400" strokeWidth={1.5}/> : <ShieldAlert size={28} className="text-violet-600 dark:text-violet-400" strokeWidth={1.5}/>}
-                    <span className="font-light tracking-[0.2em] uppercase text-[10px] text-slate-600 dark:text-white/50">Security Rating</span>
+                    {auditData.score === 100 ? (
+                      <ShieldCheck size={28} className="text-cyan-600 dark:text-cyan-400" strokeWidth={1.5}/>
+                    ) : (
+                      <ShieldAlert size={28} className="text-violet-600 dark:text-violet-400" strokeWidth={1.5}/>
+                    )}
+                    <span className="font-light tracking-[0.2em] uppercase text-[10px] text-slate-600 dark:text-white/50">
+                      Security Rating
+                    </span>
                   </div>
                   <span className={`text-4xl font-extralight ${auditData.score === 100 ? 'text-cyan-600 dark:text-cyan-400' : 'text-violet-600 dark:text-violet-400'}`}>
-                    {auditData.score}<span className="text-xl text-slate-400 dark:text-white/20">/100</span>
+                    {auditData.score}
+                    <span className="text-xl text-slate-400 dark:text-white/20">/100</span>
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {auditData.ports.map((p) => (
-                    <div key={p.port} className={STYLE.portCard}>
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-light tracking-widest text-slate-800 dark:text-white/80 text-sm">Port {p.port}</h4>
-                        <span className={`px-3 py-1 text-[8px] uppercase tracking-[0.2em] rounded-full border ${p.status === 'OPEN' ? STYLE.portOpen : STYLE.portClosed}`}>
-                          {p.status}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 dark:text-white/30 tracking-widest uppercase font-light">{p.name}</p>
-                    </div>
+                  {auditData.ports.map((portData) => (
+                    <PortCard key={portData.port} port={portData} />
                   ))}
                 </div>
               </div>
