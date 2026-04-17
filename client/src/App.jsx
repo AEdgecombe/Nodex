@@ -139,7 +139,7 @@ function App() {
 
           <div className="text-center md:text-right">
             <p className={STYLE.footerSub}>University of Portsmouth • Final Year Project</p>
-            <p className={STYLE.footerName}>Alex Edgecombe (UP2124153)</p>
+            <p className={STYLE.footerName}>Alex Edgecombe</p>
           </div>
         </div>
       </footer>
