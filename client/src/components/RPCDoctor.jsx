@@ -17,7 +17,7 @@ const STYLE = {
   metricGrid: "grid grid-cols-2 md:grid-cols-4 gap-4",
   metricCard: "p-6 bg-white/40 dark:bg-white/[0.01] rounded-2xl border border-slate-200 dark:border-white/[0.05] backdrop-blur-md",
   metricLabel: "text-[9px] text-slate-500 dark:text-white/30 uppercase tracking-[0.3em] mb-2",
-  chartBox: "w-full min-w-0 bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] h-80 relative overflow-hidden mt-8", // Included Mobile Fix
+  chartBox: "w-full min-w-0 bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] h-80 relative overflow-hidden mt-8",
   auditBox: "bg-white/40 dark:bg-white/[0.01] p-8 rounded-[2rem] border border-slate-200 dark:border-white/[0.05] mt-8",
   auditBtnReady: "bg-violet-100 hover:bg-violet-200 text-violet-700 border-violet-300 shadow-sm dark:bg-violet-500/10 dark:hover:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30 dark:hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]",
   auditBtnWait: "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-white/5 dark:text-white/30 dark:border-white/5",
@@ -27,7 +27,6 @@ const STYLE = {
   portClosed: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
 };
 
-// Abstracted components for cleaner rendering
 const TelemetryMetric = ({ label, value, colorClass }) => (
   <div className={STYLE.metricCard}>
     <p className={STYLE.metricLabel}>{label}</p>
@@ -66,13 +65,20 @@ const RPCDoctor = () => {
   const [auditCooldown, setAuditCooldown] = useState(0);
 
   const rpcUrlRef = useRef(rpcUrl);
+  const intervalRef = useRef(null);
   
-  // Keep ref synchronised with state for interval closures
   useEffect(() => { 
     rpcUrlRef.current = rpcUrl; 
   }, [rpcUrl]);
 
-  // Reset state when target URL changes
+  // Clean up interval entirely if the component unmounts
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  // Reset state and kill polling if the user changes the URL
   useEffect(() => { 
     setLatencyHistory([]); 
     setCurrentResult(null); 
@@ -81,6 +87,10 @@ const RPCDoctor = () => {
     setAuditData(null); 
     setAuditError(null); 
     setIsMonitoring(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   }, [rpcUrl]);
 
   const runDiagnostics = async () => {
@@ -115,24 +125,33 @@ const RPCDoctor = () => {
           customPing: customData.latency, 
           mainnetPing: mainnetData.latency 
         };
-        // Slice ensures we only keep the last 15 entries for performance
         return [...prev, newEntry].slice(-15);
       });
 
     } catch (err) { 
       setError(err.message); 
       setIsMonitoring(false); 
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
   };
 
-  useEffect(() => {
-    let interval;
-    if (isMonitoring) { 
+  // Dedicated handler to manually start and stop the polling
+  const toggleMonitoring = () => {
+    if (isMonitoring) {
+      setIsMonitoring(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    } else {
+      setIsMonitoring(true);
       runDiagnostics(); 
-      interval = setInterval(runDiagnostics, 3000); 
+      intervalRef.current = setInterval(runDiagnostics, 3000);
     }
-    return () => clearInterval(interval);
-  }, [isMonitoring]);
+  };
 
   const runSecurityAudit = async () => {
     if (auditCooldown > 0) return;
@@ -228,7 +247,7 @@ const RPCDoctor = () => {
           />
         </div>
         <button 
-          onClick={() => setIsMonitoring(!isMonitoring)} 
+          onClick={toggleMonitoring} 
           className={`${STYLE.btnBase} ${isMonitoring ? STYLE.btnActive : STYLE.btnIdle}`}
         >
           {isMonitoring ? (
